@@ -1,0 +1,1695 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Building a Language-Agnostic Context Engine for Autonomous SDLC Agents</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Tiempos+Headline:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'serif': ['Tiempos Headline', 'Georgia', 'serif'],
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#1a1a1a',
+                        'secondary': '#8b7355',
+                        'accent': '#d4af37',
+                        'muted': '#f5f3f0',
+                        'border': '#e5e3e0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-gradient {
+            background: linear-gradient(135deg, #f5f3f0 0%, #e5e3e0 50%, #d4af37 100%);
+        }
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .section-divider {
+            background: linear-gradient(90deg, transparent, #d4af37, transparent);
+            height: 1px;
+        }
+        .toc-fixed {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            width: 280px;
+            max-height: calc(100vh - 4rem);
+            overflow-y: auto;
+            z-index: 50;
+        }
+        .content-with-toc {
+            margin-right: 320px;
+        }
+        .citation-link {
+            color: #8b7355;
+            text-decoration: none;
+            border-bottom: 1px dotted #8b7355;
+            transition: all 0.2s ease;
+        }
+        .citation-link:hover {
+            color: #d4af37;
+            border-bottom-color: #d4af37;
+        }
+        
+        /* Mermaid diagram styling */
+        .mermaid-container {
+            display: flex;
+            justify-content: center;
+            min-height: 300px;
+            max-height: 800px;
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .mermaid-container .mermaid {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            cursor: grab;
+            transition: transform 0.3s ease;
+            transform-origin: center center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none; /* 防止触摸设备上的默认行为 */
+            -webkit-user-select: none; /* 防止文本选择 */
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .mermaid-container .mermaid svg {
+            max-width: 100%;
+            height: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .mermaid-container .mermaid:active {
+            cursor: grabbing;
+        }
+        
+        .mermaid-container.zoomed .mermaid {
+            height: 100%;
+            width: 100%;
+            cursor: grab;
+        }
+        
+        .mermaid-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .mermaid-control-btn {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #374151;
+            font-size: 14px;
+            min-width: 36px;
+            height: 36px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .mermaid-control-btn:hover {
+            background: #f8fafc;
+            border-color: #3b82f6;
+            color: #3b82f6;
+            transform: translateY(-1px);
+        }
+        
+        .mermaid-control-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Custom mermaid theme for better contrast and unified styling */
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon {
+            fill: #f8fafc;
+            stroke: #1e293b;
+            stroke-width: 2px;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+        }
+        
+        /* Different node colors with proper contrast */
+        .mermaid .node:nth-child(4n+1) rect,
+        .mermaid .node:nth-child(4n+1) circle,
+        .mermaid .node:nth-child(4n+1) ellipse,
+        .mermaid .node:nth-child(4n+1) polygon {
+            fill: #f0f9ff;
+            stroke: #0369a1;
+        }
+        
+        .mermaid .node:nth-child(4n+2) rect,
+        .mermaid .node:nth-child(4n+2) circle,
+        .mermaid .node:nth-child(4n+2) ellipse,
+        .mermaid .node:nth-child(4n+2) polygon {
+            fill: #f0fdf4;
+            stroke: #16a34a;
+        }
+        
+        .mermaid .node:nth-child(4n+3) rect,
+        .mermaid .node:nth-child(4n+3) circle,
+        .mermaid .node:nth-child(4n+3) ellipse,
+        .mermaid .node:nth-child(4n+3) polygon {
+            fill: #fefce8;
+            stroke: #ca8a04;
+        }
+        
+        .mermaid .node:nth-child(4n) rect,
+        .mermaid .node:nth-child(4n) circle,
+        .mermaid .node:nth-child(4n) ellipse,
+        .mermaid .node:nth-child(4n) polygon {
+            fill: #fdf2f8;
+            stroke: #be185d;
+        }
+        
+        .mermaid .node .label {
+            color: #1e293b;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        }
+        
+        .mermaid .edgePath .path {
+            stroke: #64748b;
+            stroke-width: 2px;
+            filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+        }
+        
+        .mermaid .edgeLabel {
+            background-color: #ffffff;
+            color: #1e293b;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .mermaid .cluster rect {
+            fill: rgba(248, 250, 252, 0.8);
+            stroke: #cbd5e1;
+            stroke-width: 1px;
+            rx: 6px;
+        }
+        
+        .mermaid .cluster .label {
+            color: #334155;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        /* Terminal nodes styling */
+        .mermaid .node.terminal rect,
+        .mermaid .node.terminal circle,
+        .mermaid .node.terminal ellipse,
+        .mermaid .node.terminal polygon {
+            fill: #fef2f2;
+            stroke: #dc2626;
+            stroke-width: 2px;
+        }
+        
+        .mermaid .node.terminal .label {
+            color: #991b1b;
+            font-weight: 600;
+        }
+        
+        /* Process nodes styling */
+        .mermaid .node.process rect,
+        .mermaid .node.process circle,
+        .mermaid .node.process ellipse,
+        .mermaid .node.process polygon {
+            fill: #eff6ff;
+            stroke: #2563eb;
+            stroke-width: 2px;
+        }
+        
+        .mermaid .node.process .label {
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+        
+        /* Decision nodes styling */
+        .mermaid .node.decision polygon {
+            fill: #fef3c7;
+            stroke: #d97706;
+            stroke-width: 2px;
+        }
+        
+        .mermaid .node.decision .label {
+            color: #92400e;
+            font-weight: 600;
+        }
+        
+        /* Ensure proper contrast for all node types */
+        .mermaid .node[id*="A"] rect,
+        .mermaid .node[id*="A"] circle,
+        .mermaid .node[id*="A"] ellipse,
+        .mermaid .node[id*="A"] polygon {
+            fill: #dbeafe;
+            stroke: #1d4ed8;
+        }
+        
+        .mermaid .node[id*="A"] .label {
+            color: #1e3a8a;
+        }
+        
+        .mermaid .node[id*="B"] rect,
+        .mermaid .node[id*="B"] circle,
+        .mermaid .node[id*="B"] ellipse,
+        .mermaid .node[id*="B"] polygon {
+            fill: #d1fae5;
+            stroke: #059669;
+        }
+        
+        .mermaid .node[id*="B"] .label {
+            color: #064e3b;
+        }
+        
+        .mermaid .node[id*="C"] rect,
+        .mermaid .node[id*="C"] circle,
+        .mermaid .node[id*="C"] ellipse,
+        .mermaid .node[id*="C"] polygon {
+            fill: #fef3c7;
+            stroke: #d97706;
+        }
+        
+        .mermaid .node[id*="C"] .label {
+            color: #78350f;
+        }
+        
+    @media (max-width: 1280px) {
+        .toc-fixed {
+            display: none;
+        }
+        .content-with-toc {
+            margin-right: 0;
+        }
+        .mermaid-control-btn:not(.reset-zoom) {
+            display: none;
+        }
+        .mermaid-controls {
+            top: auto;
+            bottom: 15px;
+            right: 15px;
+        }
+    }
+
+    /* Responsive adjustments for small screens */
+    @media (max-width: 768px) {
+        .hero-gradient {
+            height: auto;
+            min-height: 50vh;
+            padding: 1rem 0;
+        }
+
+        .hero-gradient h1 {
+            font-size: 2.25rem;
+            line-height: 1.2;
+        }
+
+        .hero-gradient p {
+            font-size: 1rem;
+        }
+
+        .hero-gradient .container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .hero-gradient img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .content-with-toc {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .mermaid-container {
+            overflow-x: auto;
+        }
+    }
+    </style>
+  </head>
+
+  <body class="bg-white text-primary font-sans leading-relaxed">
+    <!-- Fixed Table of Contents -->
+    <nav class="toc-fixed glass-effect rounded-lg shadow-lg p-6 border border-border">
+      <h3 class="font-serif font-bold text-lg mb-4 text-secondary">Contents</h3>
+      <ul class="space-y-2 text-sm">
+        <li>
+          <a href="#executive-summary" class="citation-link hover:text-accent transition-colors">Executive Summary</a>
+        </li>
+        <li>
+          <a href="#problem-definition" class="citation-link hover:text-accent transition-colors">Problem Definition</a>
+        </li>
+        <li>
+          <a href="#survey-solutions" class="citation-link hover:text-accent transition-colors">Survey of Solutions</a>
+        </li>
+        <li>
+          <a href="#techniques" class="citation-link hover:text-accent transition-colors">Techniques &amp; Patterns</a>
+        </li>
+        <li>
+          <a href="#architecture" class="citation-link hover:text-accent transition-colors">Proposed Architecture</a>
+        </li>
+        <li>
+          <a href="#privacy" class="citation-link hover:text-accent transition-colors">Privacy &amp; Compliance</a>
+        </li>
+        <li>
+          <a href="#future-proofing" class="citation-link hover:text-accent transition-colors">Future-Proofing</a>
+        </li>
+        <li>
+          <a href="#reading-list" class="citation-link hover:text-accent transition-colors">Reading List</a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="content-with-toc">
+      <!-- Hero Section -->
+      <section class="hero-gradient min-h-[60vh] flex items-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+          <img src="https://kimi-web-img.moonshot.cn/img/www.marekrei.com/248afe5093b7c66c551b896f649db58a12b83635.jpg" alt="Abstract neural network with interconnected nodes" class="w-full h-full object-cover" size="wallpaper" aspect="wide" query="abstract neural network background" referrerpolicy="no-referrer" data-modified="1" data-score="11587.00"/>
+        </div>
+        <div class="container mx-auto px-8 relative z-10">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h1 class="font-serif text-5xl lg:text-6xl font-bold text-primary mb-6 text-shadow leading-tight">
+                <em class="text-secondary">Building a</em>
+                <br/>
+                Language-Agnostic
+                <br/>
+                <span class="text-accent">Context Engine</span>
+              </h1>
+              <p class="text-xl text-gray-700 mb-8 leading-relaxed">
+                A comprehensive technical dossier on creating autonomous SDLC agents through hybrid neurosymbolic indexing and retrieval strategies.
+              </p>
+              <div class="flex flex-wrap gap-4">
+                <span class="px-4 py-2 bg-secondary/10 text-secondary rounded-full text-sm font-medium">AI/ML Research</span>
+                <span class="px-4 py-2 bg-accent/10 text-accent rounded-full text-sm font-medium">Context Engineering</span>
+                <span class="px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium">SDLC Automation</span>
+              </div>
+            </div>
+            <div class="relative">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-lg">
+                  <i class="fas fa-brain text-3xl text-accent mb-3"></i>
+                  <h3 class="font-serif font-bold text-lg mb-2">Neurosymbolic</h3>
+                  <p class="text-sm text-gray-600">Combining vector embeddings with graph-based code structure</p>
+                </div>
+                <div class="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-lg">
+                  <i class="fas fa-shield-alt text-3xl text-secondary mb-3"></i>
+                  <h3 class="font-serif font-bold text-lg mb-2">On-Premise</h3>
+                  <p class="text-sm text-gray-600">Privacy-first deployment for sensitive IP protection</p>
+                </div>
+                <div class="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-lg">
+                  <i class="fas fa-microchip text-3xl text-accent mb-3"></i>
+                  <h3 class="font-serif font-bold text-lg mb-2">Multi-Language</h3>
+                  <p class="text-sm text-gray-600">Support for Verilog, Python, Java, and CAD codebases</p>
+                </div>
+                <div class="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-lg">
+                  <i class="fas fa-robot text-3xl text-secondary mb-3"></i>
+                  <h3 class="font-serif font-bold text-lg mb-2">Autonomous</h3>
+                  <p class="text-sm text-gray-600">Agentic capabilities for automated SDLC tasks</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Executive Summary -->
+      <section id="executive-summary" class="py-16 bg-muted">
+        <div class="container mx-auto px-8">
+          <div class="max-w-4xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Executive Summary</h2>
+            <div class="prose prose-lg max-w-none">
+              <p class="text-xl text-gray-700 leading-relaxed mb-6">
+                The development of <strong>autonomous Software Development Life Cycle (SDLC) agents</strong> hinges critically on the ability to understand and utilize <strong>rich contextual information</strong> from codebases, documentation, and development workflows. This dossier synthesizes current research and industry practices to guide the design of a <strong>language-agnostic Context Engine</strong> capable of supporting such agents.
+              </p>
+              <p class="text-lg text-gray-600 leading-relaxed mb-6">
+                The core challenge lies in moving beyond simple keyword matching or entire document retrieval towards <strong>intelligent selection and synthesis of relevant information</strong>, enabling AI agents to perform complex tasks over extended interactions. <strong>Hybrid techniques</strong>, such as combining vector embeddings for semantic similarity with graph-based representations of code structure (like Abstract Syntax Trees or dependency networks) and symbolic rules, are paramount.
+              </p>
+              <div class="bg-white rounded-lg p-6 border-l-4 border-accent shadow-sm">
+                <h3 class="font-serif font-bold text-lg mb-3 text-secondary">Key Insights</h3>
+                <ul class="space-y-2 text-gray-700">
+                  <li class="flex items-start"><i class="fas fa-check-circle text-accent mt-1 mr-3"></i>Hybrid RAG combining vector + graph approaches shows superior performance</li>
+                  <li class="flex items-start"><i class="fas fa-check-circle text-accent mt-1 mr-3"></i>On-premise deployment is non-negotiable for semiconductor IP protection</li>
+                  <li class="flex items-start"><i class="fas fa-check-circle text-accent mt-1 mr-3"></i>Language-agnostic parsing with Tree-Sitter enables broad coverage</li>
+                  <li class="flex items-start"><i class="fas fa-check-circle text-accent mt-1 mr-3"></i>Specialized handling required for Verilog/SystemVerilog CAD codebases</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Problem Definition -->
+      <section id="problem-definition" class="py-16">
+        <div class="container mx-auto px-8">
+          <div class="max-w-4xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Problem Definition &amp; Requirements</h2>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">The Centrality of Context</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-6">
+                For autonomous SDLC agents to transition from experimental tools to reliable collaborators, <strong>context is paramount</strong>. The ability of an agent to understand a task, identify relevant code, adhere to project-specific conventions, and generate correct and appropriate solutions depends directly on the quality and relevance of the contextual information provided to its underlying Large Language Model (LLM).
+              </p>
+              <div class="bg-red-50 border-l-4 border-red-400 p-6 rounded-r-lg mb-6">
+                <p class="text-red-800 font-medium">
+                  <i class="fas fa-exclamation-triangle mr-2"></i>
+                  <strong>Critical Challenge:</strong> Insufficient or inaccurate context leads to LLM hallucinations, incorrect code generation, and an inability to perform complex, multi-step tasks deterministically.
+                </p>
+              </div>
+            </div>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">Target Tasks and Scope</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <h4 class="font-bold text-lg mb-3 text-primary">Primary Tasks</h4>
+                  <ul class="space-y-2 text-gray-700">
+                    <li class="flex items-center"><i class="fas fa-code text-accent mr-2"></i>Unit Test Generation</li>
+                    <li class="flex items-center"><i class="fas fa-search text-accent mr-2"></i>Pull Request Review</li>
+                    <li class="flex items-center"><i class="fas fa-bug text-accent mr-2"></i>Bug Fixing</li>
+                    <li class="flex items-center"><i class="fas fa-ticket-alt text-accent mr-2"></i>Jira Ticket Resolution</li>
+                    <li class="flex items-center"><i class="fas fa-refresh text-accent mr-2"></i>Code Refactoring</li>
+                    <li class="flex items-center"><i class="fas fa-plus-circle text-accent mr-2"></i>Feature Implementation</li>
+                  </ul>
+                </div>
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <h4 class="font-bold text-lg mb-3 text-primary">Language Coverage</h4>
+                  <div class="mb-4">
+                    <h5 class="font-medium text-secondary mb-2">General Languages</h5>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Python</span>
+                      <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Java</span>
+                      <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">TypeScript</span>
+                      <span class="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">Angular</span>
+                    </div>
+                  </div>
+                  <div>
+                    <h5 class="font-medium text-secondary mb-2">Hardware/CAD</h5>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">Verilog</span>
+                      <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">SystemVerilog</span>
+                      <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">CAD Testbenches</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Survey of Existing Solutions -->
+      <section id="survey-solutions" class="py-16 bg-muted">
+        <div class="container mx-auto px-8">
+          <div class="max-w-6xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Survey of Existing Solutions</h2>
+
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-12">
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead class="bg-secondary text-white">
+                    <tr>
+                      <th class="px-6 py-4 text-left font-medium">Feature</th>
+                      <th class="px-6 py-4 text-left font-medium">Cline</th>
+                      <th class="px-6 py-4 text-left font-medium">Cursor</th>
+                      <th class="px-6 py-4 text-left font-medium">Continue</th>
+                      <th class="px-6 py-4 text-left font-medium">Aider</th>
+                      <th class="px-6 py-4 text-left font-medium">Claude Code</th>
+                      <th class="px-6 py-4 text-left font-medium">Gemini CLI</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-border">
+                    <tr>
+                      <td class="px-6 py-4 font-medium text-secondary">Context Retrieval</td>
+                      <td class="px-6 py-4 text-sm">AST-based chunking, local vector store</td>
+                      <td class="px-6 py-4 text-sm">Custom retrieval, Merkle trees, AST chunking <a href="#ref-124" class="citation-link">[124]</a>
+                      </td>
+                      <td class="px-6 py-4 text-sm">Local model context, open files</td>
+                      <td class="px-6 py-4 text-sm">Git repository mapping, all tracked files</td>
+                      <td class="px-6 py-4 text-sm">Agentic search, MCP integration <a href="#ref-147" class="citation-link">[147]</a>
+                      </td>
+                      <td class="px-6 py-4 text-sm">1M token context, ReAct loop, MCP <a href="#ref-128" class="citation-link">[128]</a>
+                      </td>
+                    </tr>
+                    <tr class="bg-gray-50">
+                      <td class="px-6 py-4 font-medium text-secondary">Local vs. Cloud</td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Primarily Local</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">Cloud-based</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Fully Local</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Local + Cloud API</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">Cloud-based</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Local CLI + Cloud</span></td>
+                    </tr>
+                    <tr>
+                      <td class="px-6 py-4 font-medium text-secondary">On-Prem Viability</td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">High</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Low</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">High</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Medium</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Low</span></td>
+                      <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Medium</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Cline&#39;s Framework</h3>
+                <p class="text-gray-700 mb-4">
+                  Cline employs a <strong>&#34;human-in-the-loop&#34; approach</strong> with explicit user approval for actions. Its context management includes a <strong>&#34;memory bank system&#34;</strong> (projectbrief.md, activeContext.md, progress.md) and checkpoint management for rebuilding project understanding across sessions <a href="#ref-22" class="citation-link">[22]</a>.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-accent/10 text-accent rounded text-xs">Memory Bank</span>
+                  <span class="px-2 py-1 bg-secondary/10 text-secondary rounded text-xs">Checkpoint Management</span>
+                  <span class="px-2 py-1 bg-primary/10 text-primary rounded text-xs">Local-First</span>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Continue AI</h3>
+                <p class="text-gray-700 mb-4">
+                  Continue emphasizes <strong>fully local operation</strong> with support for local models via Ollama. It features automated context gathering with
+                  <code>@codebase</code> command and custom context providers, making it ideal for organizations with stringent data security needs <a href="#ref-31" class="citation-link">[31]</a>.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Local Models</span>
+                  <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">@codebase</span>
+                  <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Custom Providers</span>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Gemini Code Assist</h3>
+                <p class="text-gray-700 mb-4">
+                  Google&#39;s Gemini Code Assist leverages <strong>1 million token context window</strong> with Gemini 2.5 Pro for Enterprise. It features Agent Mode for complex tasks and MCP integration, with planned on-prem deployment via Google Distributed Cloud <a href="#ref-55" class="citation-link">[55]</a>.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">1M Tokens</span>
+                  <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">Agent Mode</span>
+                  <span class="px-2 py-1 bg-teal-100 text-teal-800 rounded text-xs">GDC On-Prem</span>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Claude Code</h3>
+                <p class="text-gray-700 mb-4">
+                  Claude Code features <strong>&#34;agentic search&#34;</strong> for understanding entire codebases without manual selection. It includes real-time context window visibility and compression with
+                  <code>/compact</code> command, along with MCP integration <a href="#ref-86" class="citation-link">[86]</a>.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">Agentic Search</span>
+                  <span class="px-2 py-1 bg-pink-100 text-pink-800 rounded text-xs">Context Compression</span>
+                  <span class="px-2 py-1 bg-cyan-100 text-cyan-800 rounded text-xs">MCP Integration</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Techniques &amp; Design Patterns -->
+      <section id="techniques" class="py-16">
+        <div class="container mx-auto px-8">
+          <div class="max-w-4xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Techniques &amp; Design Patterns</h2>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">Neurosymbolic Indexing and Hybrid RAG</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-6">
+                Neurosymbolic indexing combines neural (vector-based) and symbolic (graph-based) AI, offering robust code understanding by capturing both semantic meaning and structural relationships. This hybrid methodology enables complex queries that find semantically similar functions via vector search and trace dependencies via graph traversal.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <i class="fas fa-vector-square text-3xl text-accent mb-4"></i>
+                  <h4 class="font-bold text-lg mb-3">Vector Databases</h4>
+                  <ul class="text-sm text-gray-700 space-y-1">
+                    <li>• Milvus (scalable, cloud-native)</li>
+                    <li>• Qdrant (high-performance, Rust)</li>
+                    <li>• Weaviate (hybrid search)</li>
+                    <li>• Faiss (Facebook AI)</li>
+                    <li>• LanceDB + TypeDB</li>
+                  </ul>
+                </div>
+
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <i class="fas fa-project-diagram text-3xl text-secondary mb-4"></i>
+                  <h4 class="font-bold text-lg mb-3">Graph Databases</h4>
+                  <ul class="text-sm text-gray-700 space-y-1">
+                    <li>• Neo4j (Cypher query language)</li>
+                    <li>• Apache Age (PostgreSQL-based)</li>
+                    <li>• Custom graph representations</li>
+                    <li>• Call graphs &amp; dependencies</li>
+                    <li>• AST relationship mapping</li>
+                  </ul>
+                </div>
+
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <i class="fas fa-search text-3xl text-accent mb-4"></i>
+                  <h4 class="font-bold text-lg mb-3">Hybrid Search</h4>
+                  <ul class="text-sm text-gray-700 space-y-1">
+                    <li>• Vector similarity + graph traversal</li>
+                    <li>• Reranking with MMR</li>
+                    <li>• Semantic + structural fusion</li>
+                    <li>• Context compression</li>
+                    <li>• Query understanding</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">AST-Based Techniques with Tree-Sitter</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-6">
+                Abstract Syntax Trees provide structured, hierarchical code representations crucial for language-agnostic processing. <strong>Tree-Sitter</strong> enables parsing across multiple languages, supporting techniques like AST slicing, traversal, and embedding.
+              </p>
+
+              <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border-l-4 border-blue-400 mb-6">
+                <h4 class="font-bold text-lg mb-3 text-blue-900">AST Slicing Benefits</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ul class="text-blue-800 space-y-2">
+                    <li class="flex items-start"><i class="fas fa-cut text-blue-600 mt-1 mr-2"></i>Extract relevant code portions</li>
+                    <li class="flex items-start"><i class="fas fa-compress text-blue-600 mt-1 mr-2"></i>Reduce context window usage</li>
+                    <li class="flex items-start"><i class="fas fa-target text-blue-600 mt-1 mr-2"></i>Focus on specific variables/functions</li>
+                  </ul>
+                  <ul class="text-blue-800 space-y-2">
+                    <li class="flex items-start"><i class="fas fa-code-branch text-blue-600 mt-1 mr-2"></i>Preserve structural relationships</li>
+                    <li class="flex items-start"><i class="fas fa-language text-blue-600 mt-1 mr-2"></i>Language-independent processing</li>
+                    <li class="flex items-start"><i class="fas fa-search-plus text-blue-600 mt-1 mr-2"></i>Improve retrieval precision</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">Specialized Handling for Hardware/CAD</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-6">
+                Hardware Description Languages like Verilog and SystemVerilog present unique challenges due to hardware structures, complex hierarchies, and timing constraints. The <strong>&#34;VeriDebug&#34; framework</strong> demonstrates specialized handling using contrastive learning for deep semantic understanding <a href="#ref-111" class="citation-link">[111]</a>.
+              </p>
+
+              <div class="bg-red-50 rounded-lg p-6 border border-red-200">
+                <h4 class="font-bold text-lg mb-3 text-red-900">Key Considerations for HDLs</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 class="font-medium text-red-800 mb-2">Technical Challenges</h5>
+                    <ul class="text-red-700 text-sm space-y-1">
+                      <li>• Hardware structure description</li>
+                      <li>• Complex module hierarchies</li>
+                      <li>• Concurrency and timing</li>
+                      <li>• RTL constructs and bit-widths</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium text-red-800 mb-2">Solution Approaches</h5>
+                    <ul class="text-red-700 text-sm space-y-1">
+                      <li>• Contrastive learning for semantics</li>
+                      <li>• Internal knowledge bases</li>
+                      <li>• AST-based analysis</li>
+                      <li>• Proprietary dataset generation</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Proposed Architecture -->
+      <section id="architecture" class="py-16 bg-muted">
+        <div class="container mx-auto px-8">
+          <div class="max-w-6xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Proposed High-Level Architecture</h2>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">Core Modules and Data Flow</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-8">
+                The architecture consists of five core modules designed for extensibility, scalability, and efficient context retrieval. The modular design allows components to be swapped as technologies evolve while maintaining system integrity.
+              </p>
+
+              <!-- Mermaid Diagram -->
+              <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+                <h4 class="font-serif text-xl font-bold text-secondary mb-6 text-center">Context Engine Architecture Diagram</h4>
+                <div class="mermaid-container">
+                  <div class="mermaid-controls">
+                    <button class="mermaid-control-btn zoom-in" title="放大">
+                      <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="mermaid-control-btn zoom-out" title="缩小">
+                      <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="mermaid-control-btn reset-zoom" title="重置">
+                      <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button class="mermaid-control-btn fullscreen" title="全屏查看">
+                      <i class="fas fa-expand"></i>
+                    </button>
+                  </div>
+                  <div class="mermaid" id="architecture-diagram">
+                    graph TD
+                    A[&#34;Data Sources
+                    <br/>Code, Docs, Issues, CAD&#34;] --&gt; B[&#34;Ingestor
+                    <br/>Language Detection
+                    <br/>Metadata Extraction&#34;]
+                    B --&gt; C[&#34;Indexer
+                    <br/>AST Generation
+                    <br/>Chunking &amp; Embedding
+                    <br/>Graph Construction&#34;]
+                    C --&gt; D[&#34;Vector DB
+                    <br/>Milvus/Qdrant
+                    <br/>Semantic Search&#34;]
+                    C --&gt; E[&#34;Graph DB
+                    <br/>Neo4j/Age
+                    <br/>Structural Relationships&#34;]
+
+                    F[&#34;Autonomous Agent&#34;] --&gt; G[&#34;Security Gateway
+                    <br/>Authentication
+                    <br/>Authorization
+                    <br/>Audit Logging&#34;]
+                    G --&gt; H[&#34;Retriever
+                    <br/>Hybrid Search
+                    <br/>Reranking
+                    <br/>Fusion&#34;]
+                    H --&gt; D
+                    H --&gt; E
+                    D --&gt; H
+                    E --&gt; H
+                    H --&gt; I[&#34;Context Router
+                    <br/>LLM Context Management
+                    <br/>Prompt Engineering
+                    <br/>Agent Integration&#34;]
+                    I --&gt; J[&#34;LLM
+                    <br/>Language Model
+                    <br/>Reasoning &amp; Generation&#34;]
+                    J --&gt; F
+                    I --&gt; K[&#34;Conversation History
+                    <br/>State Management
+                    <br/>Feedback Loop&#34;]
+
+                    style A fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#1e293b
+                    style B fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e40af
+                    style C fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e40af
+                    style D fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#15803d
+                    style E fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#15803d
+                    style F fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e
+                    style G fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#991b1b
+                    style H fill:#f3e8ff,stroke:#7c3aed,stroke-width:2px,color:#6d28d9
+                    style I fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0369a1
+                    style J fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#15803d
+                    style K fill:#fffbeb,stroke:#f59e0b,stroke-width:2px,color:#d97706
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="space-y-6">
+                  <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                    <div class="flex items-center mb-4">
+                      <i class="fas fa-download text-2xl text-accent mr-3"></i>
+                      <h4 class="font-bold text-lg">Ingestor Module</h4>
+                    </div>
+                    <p class="text-gray-700 text-sm mb-3">Acquires raw data from various sources including code repositories, documentation, and issue trackers.</p>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">Git/SVN</span>
+                      <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Confluence</span>
+                      <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Jira</span>
+                      <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Verilog</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                    <div class="flex items-center mb-4">
+                      <i class="fas fa-database text-2xl text-secondary mr-3"></i>
+                      <h4 class="font-bold text-lg">Indexer Module</h4>
+                    </div>
+                    <p class="text-gray-700 text-sm mb-3">Transforms raw data into searchable representations using AST parsing, chunking, and embedding.</p>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">Tree-Sitter</span>
+                      <span class="px-2 py-1 bg-pink-100 text-pink-800 rounded text-xs">Embeddings</span>
+                      <span class="px-2 py-1 bg-teal-100 text-teal-800 rounded text-xs">Graph DB</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                    <div class="flex items-center mb-4">
+                      <i class="fas fa-search text-2xl text-accent mr-3"></i>
+                      <h4 class="font-bold text-lg">Retriever Module</h4>
+                    </div>
+                    <p class="text-gray-700 text-sm mb-3">Performs hybrid search combining vector similarity, graph traversal, and keyword matching.</p>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Vector Search</span>
+                      <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">Graph Query</span>
+                      <span class="px-2 py-1 bg-cyan-100 text-cyan-800 rounded text-xs">Reranking</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-6">
+                  <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                    <div class="flex items-center mb-4">
+                      <i class="fas fa-route text-2xl text-secondary mr-3"></i>
+                      <h4 class="font-bold text-lg">Context Router</h4>
+                    </div>
+                    <p class="text-gray-700 text-sm mb-3">Manages LLM context window, prompt engineering, and integration with agent frameworks.</p>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-2 py-1 bg-lime-100 text-lime-800 rounded text-xs">MCP Protocol</span>
+                      <span class="px-2 py-1 bg-emerald-100 text-emerald-800 rounded text-xs">Prompt Engineering</span>
+                      <span class="px-2 py-1 bg-violet-100 text-violet-800 rounded text-xs">State Management</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                    <div class="flex items-center mb-4">
+                      <i class="fas fa-shield-alt text-2xl text-accent mr-3"></i>
+                      <h4 class="font-bold text-lg">Security Gateway</h4>
+                    </div>
+                    <p class="text-gray-700 text-sm mb-3">Enforces authentication, authorization, and audit logging for on-premise security.</p>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Authentication</span>
+                      <span class="px-2 py-1 bg-rose-100 text-rose-800 rounded text-xs">Authorization</span>
+                      <span class="px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs">Audit Logs</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
+                    <h4 class="font-bold text-lg mb-3 text-green-900">Data Flow Process</h4>
+                    <ol class="text-green-800 text-sm space-y-2">
+                      <li class="flex items-start"><span class="bg-green-200 text-green-800 rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5">1</span>Raw data ingestion from multiple sources</li>
+                      <li class="flex items-start"><span class="bg-green-200 text-green-800 rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5">2</span>Indexing with AST parsing and embedding</li>
+                      <li class="flex items-start"><span class="bg-green-200 text-green-800 rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5">3</span>Agent query processing and security check</li>
+                      <li class="flex items-start"><span class="bg-green-200 text-green-800 rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5">4</span>Hybrid retrieval from vector and graph DBs</li>
+                      <li class="flex items-start"><span class="bg-green-200 text-green-800 rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5">5</span>Context routing and LLM interaction</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">Recommended On-Prem Open-Source Stack</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-8">
+                For an on-premise, open-source-first deployment, we recommend a robust stack centered around <strong>Milvus vector database</strong> for its scalability, performance, and cloud-native architecture <a href="#ref-149" class="citation-link">[149]</a>.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <i class="fas fa-vector-square text-3xl text-accent mb-4"></i>
+                  <h4 class="font-bold text-lg mb-3">Vector Database</h4>
+                  <p class="text-sm text-gray-700 mb-3"><strong>Milvus</strong> - Scalable, cloud-native with HNSW and quantization support</p>
+                  <div class="flex flex-wrap gap-1">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">Scalable</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">K8s Ready</span>
+                  </div>
+                </div>
+
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <i class="fas fa-project-diagram text-3xl text-secondary mb-4"></i>
+                  <h4 class="font-bold text-lg mb-3">Graph Database</h4>
+                  <p class="text-sm text-gray-700 mb-3"><strong>Neo4j</strong> or <strong>Apache Age</strong> - For code structure and dependencies</p>
+                  <div class="flex flex-wrap gap-1">
+                    <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Cypher</span>
+                    <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">PGQ</span>
+                  </div>
+                </div>
+
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <i class="fas fa-code text-3xl text-accent mb-4"></i>
+                  <h4 class="font-bold text-lg mb-3">Parsing &amp; AST</h4>
+                  <p class="text-sm text-gray-700 mb-3"><strong>Tree-Sitter</strong> - Language-agnostic parsing with wide coverage</p>
+                  <div class="flex flex-wrap gap-1">
+                    <span class="px-2 py-1 bg-teal-100 text-teal-800 rounded text-xs">Multi-Lang</span>
+                    <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">AST</span>
+                  </div>
+                </div>
+
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <i class="fas fa-brain text-3xl text-secondary mb-4"></i>
+                  <h4 class="font-bold text-lg mb-3">Embedding Models</h4>
+                  <p class="text-sm text-gray-700 mb-3"><strong>SentenceTransformers</strong> - Open-source models from Hugging Face</p>
+                  <div class="flex flex-wrap gap-1">
+                    <span class="px-2 py-1 bg-pink-100 text-pink-800 rounded text-xs">Self-hosted</span>
+                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Customizable</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">Storage, Compute, and Scaling</h3>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <h4 class="font-bold text-lg mb-4 text-primary">Storage Considerations</h4>
+                  <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                      <span class="text-gray-700">Vector embeddings (1M chunks)</span>
+                      <span class="font-medium text-accent">~3 GB</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-gray-700">Vector embeddings (1B chunks)</span>
+                      <span class="font-medium text-accent">~3 TB</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-gray-700">Graph database</span>
+                      <span class="font-medium text-secondary">Variable</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-gray-700">Raw code storage</span>
+                      <span class="font-medium text-secondary">Minimal</span>
+                    </div>
+                  </div>
+                  <div class="mt-4 p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
+                    <p class="text-yellow-800 text-sm"><i class="fas fa-exclamation-triangle mr-2"></i>Fast SSDs recommended for database performance</p>
+                  </div>
+                </div>
+
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                  <h4 class="font-bold text-lg mb-4 text-primary">Compute Requirements</h4>
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-medium text-gray-700">Indexing Pipeline</span>
+                        <p class="text-sm text-gray-600">CPU-intensive parsing and embedding</p>
+                      </div>
+                      <i class="fas fa-microchip text-2xl text-accent"></i>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-medium text-gray-700">Retrieval Operations</span>
+                        <p class="text-sm text-gray-600">Vector search and graph traversals</p>
+                      </div>
+                      <i class="fas fa-search text-2xl text-secondary"></i>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-medium text-gray-700">LLM Interaction</span>
+                        <p class="text-sm text-gray-600">Prompt construction and management</p>
+                      </div>
+                      <i class="fas fa-brain text-2xl text-accent"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <h4 class="font-bold text-lg mb-4 text-blue-900">Scaling Strategies</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 class="font-medium text-blue-800 mb-2">Horizontal Scaling</h5>
+                    <ul class="text-blue-700 text-sm space-y-1">
+                      <li>• Distributed vector database deployments</li>
+                      <li>• Stateless worker architecture</li>
+                      <li>• Load balancing for API endpoints</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium text-blue-800 mb-2">Optimization</h5>
+                    <ul class="text-blue-700 text-sm space-y-1">
+                      <li>• Multi-level caching strategies</li>
+                      <li>• Resource monitoring and alerting</li>
+                      <li>• Separation of compute and storage</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Privacy &amp; Compliance -->
+      <section id="privacy" class="py-16">
+        <div class="container mx-auto px-8">
+          <div class="max-w-4xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Privacy &amp; Compliance Notes</h2>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">Handling Proprietary Semiconductor IP</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-6">
+                Handling proprietary and sensitive codebases, such as <strong>semiconductor Intellectual Property (IP)</strong>, is a primary driver for an on-premise, open-source-first Context Engine. The architecture must be designed with <strong>security and data sovereignty as foundational principles</strong>.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-red-50 rounded-lg p-6 border border-red-200">
+                  <h4 class="font-bold text-lg mb-4 text-red-900">Security Requirements</h4>
+                  <ul class="text-red-800 space-y-2">
+                    <li class="flex items-start"><i class="fas fa-shield-alt text-red-600 mt-1 mr-2"></i>Entire data lifecycle within controlled environment</li>
+                    <li class="flex items-start"><i class="fas fa-lock text-red-600 mt-1 mr-2"></i>No external transmission of code or embeddings</li>
+                    <li class="flex items-start"><i class="fas fa-user-check text-red-600 mt-1 mr-2"></i>Stringent access controls and authorization</li>
+                    <li class="flex items-start"><i class="fas fa-clipboard-list text-red-600 mt-1 mr-2"></i>Comprehensive audit trails and logging</li>
+                  </ul>
+                </div>
+
+                <div class="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                  <h4 class="font-bold text-lg mb-4 text-blue-900">Advanced Protection</h4>
+                  <ul class="text-blue-800 space-y-2">
+                    <li class="flex items-start"><i class="fas fa-mask text-blue-600 mt-1 mr-2"></i>Data masking and redaction techniques</li>
+                    <li class="flex items-start"><i class="fas fa-search text-blue-600 mt-1 mr-2"></i>Thorough security audits of OSS components</li>
+                    <li class="flex items-start"><i class="fas fa-network-wired text-blue-600 mt-1 mr-2"></i>Air-gapped deployment capability</li>
+                    <li class="flex items-start"><i class="fas fa-certificate text-blue-600 mt-1 mr-2"></i>Compliance with industry regulations</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-12">
+              <h3 class="font-serif text-2xl font-bold text-secondary mb-6">On-Premise Deployment Trends</h3>
+              <p class="text-lg text-gray-700 leading-relaxed mb-6">
+                The increasing demand for AI capabilities in environments with stringent data security requirements has led to a significant trend towards <strong>on-premise and air-gapped AI deployments</strong>. Google&#39;s announcement of bringing Gemini models to <strong>Google Distributed Cloud (GDC)</strong> exemplifies this shift <a href="#ref-59" class="citation-link">[59]</a>.
+              </p>
+
+              <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200 mb-6">
+                <h4 class="font-bold text-lg mb-4 text-green-900">GDC Deployment Features</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 class="font-medium text-green-800 mb-2">Security &amp; Compliance</h5>
+                    <ul class="text-green-700 text-sm space-y-1">
+                      <li>• End-to-end confidential computing</li>
+                      <li>• US Government Secret/Top Secret authorization</li>
+                      <li>• Data residency and sovereignty compliance</li>
+                      <li>• Air-gapped configurations available</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium text-green-800 mb-2">Technical Capabilities</h5>
+                    <ul class="text-green-700 text-sm space-y-1">
+                      <li>• NVIDIA Blackwell hardware support</li>
+                      <li>• Q3 2025 public preview timeline</li>
+                      <li>• Vertex AI integration</li>
+                      <li>• AlloyDB vector database</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h4 class="font-bold text-lg mb-4 text-primary">Implications for Context Engine</h4>
+                <p class="text-gray-700 mb-4">
+                  An <strong>on-premise deployment</strong> directly addresses privacy and compliance concerns for processing proprietary codebases. For autonomous SDLC agents operating on sensitive IP, running the entire context engine within the organization&#39;s firewall is non-negotiable.
+                </p>
+                <div class="flex flex-wrap gap-3">
+                  <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Data Sovereignty</span>
+                  <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Regulatory Compliance</span>
+                  <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">IP Protection</span>
+                  <span class="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">Low Latency</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Future-Proofing -->
+      <section id="future-proofing" class="py-16 bg-muted">
+        <div class="container mx-auto px-8">
+          <div class="max-w-4xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Future-Proofing &amp; Evergreen Update Loop</h2>
+
+            <p class="text-lg text-gray-700 leading-relaxed mb-8">
+              To maintain relevance in the rapidly evolving field of AI and software development, the Context Engine requires a <strong>proactive strategy for future-proofing and an evergreen update loop</strong>.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <i class="fas fa-search text-3xl text-accent mb-4"></i>
+                <h3 class="font-bold text-lg mb-4">Continuous Monitoring</h3>
+                <p class="text-gray-700 text-sm mb-4">Regular scanning of academic publications, tech blogs, and open-source projects for new techniques and best practices.</p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">arXiv</span>
+                  <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">GitHub</span>
+                  <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Conferences</span>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <i class="fas fa-sync-alt text-3xl text-secondary mb-4"></i>
+                <h3 class="font-bold text-lg mb-4">Component Re-evaluation</h3>
+                <p class="text-gray-700 text-sm mb-4">Periodic assessment of vector databases, graph databases, parsers, and embedding models against emerging alternatives.</p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Performance</span>
+                  <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">Features</span>
+                  <span class="px-2 py-1 bg-teal-100 text-teal-800 rounded text-xs">Scalability</span>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <i class="fas fa-brain text-3xl text-accent mb-4"></i>
+                <h3 class="font-bold text-lg mb-4">Model Refresh Strategy</h3>
+                <p class="text-gray-700 text-sm mb-4">Easy swapping of LLMs and fine-tuning approaches to improve domain-specific understanding.</p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">Fine-tuning</span>
+                  <span class="px-2 py-1 bg-pink-100 text-pink-800 rounded text-xs">Open-source</span>
+                  <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Custom Models</span>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <i class="fas fa-cubes text-3xl text-secondary mb-4"></i>
+                <h3 class="font-bold text-lg mb-4">Modular Architecture</h3>
+                <p class="text-gray-700 text-sm mb-4">Well-defined APIs and interfaces between modules for minimal disruption during upgrades.</p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 bg-lime-100 text-lime-800 rounded text-xs">APIs</span>
+                  <span class="px-2 py-1 bg-cyan-100 text-cyan-800 rounded text-xs">Interfaces</span>
+                  <span class="px-2 py-1 bg-violet-100 text-violet-800 rounded text-xs">Plugins</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-8 border border-indigo-200">
+              <h3 class="font-serif text-2xl font-bold text-indigo-900 mb-6">Implementation Roadmap</h3>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <h4 class="font-bold text-lg mb-3 text-indigo-800">Immediate (0-3 months)</h4>
+                  <ul class="text-indigo-700 text-sm space-y-2">
+                    <li>• Automated testing suite development</li>
+                    <li>• Community engagement strategy</li>
+                    <li>• Version control and rollback procedures</li>
+                    <li>• Feedback loop implementation</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="font-bold text-lg mb-3 text-indigo-800">Short-term (3-6 months)</h4>
+                  <ul class="text-indigo-700 text-sm space-y-2">
+                    <li>• Research monitoring automation</li>
+                    <li>• Component evaluation framework</li>
+                    <li>• Model refresh pipeline</li>
+                    <li>• Performance benchmarking</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="font-bold text-lg mb-3 text-indigo-800">Ongoing</h4>
+                  <ul class="text-indigo-700 text-sm space-y-2">
+                    <li>• Continuous integration improvements</li>
+                    <li>• Security vulnerability monitoring</li>
+                    <li>• Community contribution management</li>
+                    <li>• Technology trend analysis</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reading List -->
+      <section id="reading-list" class="py-16">
+        <div class="container mx-auto px-8">
+          <div class="max-w-6xl mx-auto">
+            <h2 class="font-serif text-4xl font-bold text-primary mb-8">Annotated Reading List</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Key Research Papers</h3>
+                <div class="space-y-4">
+                  <div class="border-l-4 border-accent pl-4">
+                    <h4 class="font-medium text-primary mb-1">VeriDebug: Automated Verilog Debugging Framework</h4>
+                    <a href="https://arxiv.org/abs/2406.02921" class="citation-link text-sm">[111] https://arxiv.org/abs/2406.02921</a>
+                    <p class="text-gray-600 text-sm mt-1">Presents framework and dataset for LLM-based Verilog debugging with contrastive learning for semantic understanding.</p>
+                  </div>
+                  <div class="border-l-4 border-secondary pl-4">
+                    <h4 class="font-medium text-primary mb-1">code2vec: Learning Distributed Code Representations</h4>
+                    <a href="https://arxiv.org/abs/1803.09473" class="citation-link text-sm">[109] https://arxiv.org/abs/1803.09473</a>
+                    <p class="text-gray-600 text-sm mt-1">Seminal paper on learning vector representations from AST paths, foundational for code embedding techniques.</p>
+                  </div>
+                  <div class="border-l-4 border-accent pl-4">
+                    <h4 class="font-medium text-primary mb-1">Improving code2vec with RNNs</h4>
+                    <a href="https://ieeexplore.ieee.org/document/8811938" class="citation-link text-sm">[107] https://ieeexplore.ieee.org/document/8811938</a>
+                    <p class="text-gray-600 text-sm mt-1">Enhancements using RNNs for better AST path representation and more nuanced code embeddings.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Open-Source Projects</h3>
+                <div class="space-y-4">
+                  <div class="border-l-4 border-secondary pl-4">
+                    <h4 class="font-medium text-primary mb-1">Aider - AI Pair Programming Tool</h4>
+                    <a href="https://github.com/Aider-AI/aider" class="citation-link text-sm">[160] https://github.com/Aider-AI/aider</a>
+                    <p class="text-gray-600 text-sm mt-1">Open-source tool with Git integration, repository mapping, and broad LLM support for terminal-based development.</p>
+                  </div>
+                  <div class="border-l-4 border-accent pl-4">
+                    <h4 class="font-medium text-primary mb-1">Milvus Vector Database</h4>
+                    <a href="https://github.com/milvus-io/milvus" class="citation-link text-sm">[149] https://github.com/milvus-io/milvus</a>
+                    <p class="text-gray-600 text-sm mt-1">Highly scalable open-source vector database with cloud-native architecture and Kubernetes support.</p>
+                  </div>
+                  <div class="border-l-4 border-secondary pl-4">
+                    <h4 class="font-medium text-primary mb-1">Context Engineering Template</h4>
+                    <a href="https://github.com/coleam00/context-engineering-intro" class="citation-link text-sm">[164] https://github.com/coleam00/context-engineering-intro</a>
+                    <p class="text-gray-600 text-sm mt-1">Template for structured context provision with rules, examples, and Product Requirements Prompts.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Industry Articles &amp; Blogs</h3>
+                <div class="space-y-4">
+                  <div class="border-l-4 border-accent pl-4">
+                    <h4 class="font-medium text-primary mb-1">Context Engineering for AI Code Generation</h4>
+                    <a href="https://dev.to/unfor19/ai-code-generation-smarter-and-more-cost-efficient-with-context-engineering-1bjh" class="citation-link text-sm">[170] DEV Community Article</a>
+                    <p class="text-gray-600 text-sm mt-1">Discusses automating context creation and using canonical DETAILS.md files with symlinks for consistent context.</p>
+                  </div>
+                  <div class="border-l-4 border-secondary pl-4">
+                    <h4 class="font-medium text-primary mb-1">The New Skill: Context Engineering</h4>
+                    <a href="https://www.philschmid.de/context-engineering" class="citation-link text-sm">[171] philschmid blog</a>
+                    <p class="text-gray-600 text-sm mt-1">Argues that context quality is more critical than code complexity, with performance transformation examples.</p>
+                  </div>
+                  <div class="border-l-4 border-accent pl-4">
+                    <h4 class="font-medium text-primary mb-1">Gemini Code Assist Enterprise Features</h4>
+                    <a href="https://codeassist.google/products/business" class="citation-link text-sm">[55] Google Code Assist</a>
+                    <p class="text-gray-600 text-sm mt-1">Details enterprise features including CLI, Agent Mode, MCP integration, and security capabilities.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-6 shadow-sm border border-border">
+                <h3 class="font-serif text-xl font-bold text-secondary mb-4">Community Resources</h3>
+                <div class="space-y-4">
+                  <div class="border-l-4 border-secondary pl-4">
+                    <h4 class="font-medium text-primary mb-1">Awesome AI Agents Lists</h4>
+                    <a href="https://github.com/e2b-dev/awesome-ai-agents" class="citation-link text-sm">[95] Awesome AI Agents</a>
+                    <p class="text-gray-600 text-sm mt-1">Comprehensive list of AI autonomous agents, frameworks, and development tools.</p>
+                  </div>
+                  <div class="border-l-4 border-accent pl-4">
+                    <h4 class="font-medium text-primary mb-1">LangChain Context Engineering</h4>
+                    <a href="https://github.com/langchain-ai/context_engineering" class="citation-link text-sm">[172] LangChain Examples</a>
+                    <p class="text-gray-600 text-sm mt-1">Strategies for context engineering using LangGraph: write, select, compress, and isolate techniques.</p>
+                  </div>
+                  <div class="border-l-4 border-secondary pl-4">
+                    <h4 class="font-medium text-primary mb-1">Claude Code Complete Guide</h4>
+                    <a href="https://blog.axiaoxin.com/post/claude-code-full-guide/" class="citation-link text-sm">[74] Chinese-Language Guide</a>
+                    <p class="text-gray-600 text-sm mt-1">Comprehensive guide covering installation, functionalities, commands, and MCP integration.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="py-12 bg-primary text-white">
+        <div class="container mx-auto px-8">
+          <div class="max-w-4xl mx-auto text-center">
+            <h3 class="font-serif text-2xl font-bold mb-4">Building the Future of Autonomous Development</h3>
+            <p class="text-gray-300 mb-6">
+              This research dossier provides the foundation for creating language-agnostic context engines that empower autonomous SDLC agents with intelligent, privacy-preserving capabilities.
+            </p>
+            <div class="flex justify-center space-x-6 text-sm text-gray-400">
+              <span>Technical Research</span>
+              <span>•</span>
+              <span>AI/ML Engineering</span>
+              <span>•</span>
+              <span>Context Engineering</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Reference Citations -->
+    <div id="references" class="hidden">
+      <div id="ref-124">[124] Cursor Code Index Implementation</div>
+      <div id="ref-149">[149] Milvus Vector Database Architecture</div>
+      <div id="ref-147">[147] Claude Code Agentic Search</div>
+      <div id="ref-128">[128] Gemini CLI Technical Overview</div>
+      <div id="ref-31">[31] Continue AI Local-First Approach</div>
+      <div id="ref-86">[86] Claude Code Context Management</div>
+      <div id="ref-111">[111] VeriDebug: Automated Verilog Debugging</div>
+      <div id="ref-55">[55] Gemini Code Assist Enterprise</div>
+      <div id="ref-59">[59] Google Distributed Cloud Gemini</div>
+      <div id="ref-22">[22] Cline Framework Architecture</div>
+      <div id="ref-109">[109] code2vec: Learning Distributed Code Representations</div>
+      <div id="ref-107">[107] Improving code2vec with RNNs</div>
+      <div id="ref-160">[160] Aider AI Pair Programming Tool</div>
+      <div id="ref-164">[164] Context Engineering Template</div>
+      <div id="ref-172">[172] LangChain Context Engineering</div>
+      <div id="ref-170">[170] Context Engineering for AI Code Generation</div>
+      <div id="ref-171">[171] The New Skill: Context Engineering</div>
+      <div id="ref-95">[95] Awesome AI Agents List</div>
+      <div id="ref-74">[74] Claude Code Complete Guide</div>
+    </div>
+
+    <script>
+        // Initialize Mermaid with custom theme and configuration
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#f8fafc',
+                primaryTextColor: '#1e293b',
+                primaryBorderColor: '#1e293b',
+                lineColor: '#64748b',
+                secondaryColor: '#e2e8f0',
+                tertiaryColor: '#f1f5f9',
+                background: '#ffffff',
+                mainBkg: '#f8fafc',
+                secondBkg: '#e2e8f0',
+                tertiaryBkg: '#f1f5f9',
+                nodeBorder: '#1e293b',
+                clusterBkg: '#f8fafc',
+                clusterBorder: '#cbd5e1',
+                defaultLinkColor: '#64748b',
+                titleColor: '#1e293b',
+                edgeLabelBackground: '#ffffff',
+                nodeTextColor: '#1e293b'
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20
+            },
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: 13
+        });
+
+        // Initialize Mermaid Controls for zoom and pan
+        function initializeMermaidControls() {
+            const containers = document.querySelectorAll('.mermaid-container');
+
+            containers.forEach(container => {
+            const mermaidElement = container.querySelector('.mermaid');
+            let scale = 1;
+            let isDragging = false;
+            let startX, startY, translateX = 0, translateY = 0;
+
+            // 触摸相关状态
+            let isTouch = false;
+            let touchStartTime = 0;
+            let initialDistance = 0;
+            let initialScale = 1;
+            let isPinching = false;
+
+            // Zoom controls
+            const zoomInBtn = container.querySelector('.zoom-in');
+            const zoomOutBtn = container.querySelector('.zoom-out');
+            const resetBtn = container.querySelector('.reset-zoom');
+            const fullscreenBtn = container.querySelector('.fullscreen');
+
+            function updateTransform() {
+                mermaidElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+                if (scale > 1) {
+                container.classList.add('zoomed');
+                } else {
+                container.classList.remove('zoomed');
+                }
+
+                mermaidElement.style.cursor = isDragging ? 'grabbing' : 'grab';
+            }
+
+            if (zoomInBtn) {
+                zoomInBtn.addEventListener('click', () => {
+                scale = Math.min(scale * 1.25, 4);
+                updateTransform();
+                });
+            }
+
+            if (zoomOutBtn) {
+                zoomOutBtn.addEventListener('click', () => {
+                scale = Math.max(scale / 1.25, 0.3);
+                if (scale <= 1) {
+                    translateX = 0;
+                    translateY = 0;
+                }
+                updateTransform();
+                });
+            }
+
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                scale = 1;
+                translateX = 0;
+                translateY = 0;
+                updateTransform();
+                });
+            }
+
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', () => {
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                } else if (container.msRequestFullscreen) {
+                    container.msRequestFullscreen();
+                }
+                });
+            }
+
+            // Mouse Events
+            mermaidElement.addEventListener('mousedown', (e) => {
+                if (isTouch) return; // 如果是触摸设备，忽略鼠标事件
+
+                isDragging = true;
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                mermaidElement.style.cursor = 'grabbing';
+                updateTransform();
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging && !isTouch) {
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                updateTransform();
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging && !isTouch) {
+                isDragging = false;
+                mermaidElement.style.cursor = 'grab';
+                updateTransform();
+                }
+            });
+
+            document.addEventListener('mouseleave', () => {
+                if (isDragging && !isTouch) {
+                isDragging = false;
+                mermaidElement.style.cursor = 'grab';
+                updateTransform();
+                }
+            });
+
+            // 获取两点之间的距离
+            function getTouchDistance(touch1, touch2) {
+                return Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+                );
+            }
+
+            // Touch Events - 触摸事件处理
+            mermaidElement.addEventListener('touchstart', (e) => {
+                isTouch = true;
+                touchStartTime = Date.now();
+
+                if (e.touches.length === 1) {
+                // 单指拖动
+                isPinching = false;
+                isDragging = true;
+
+                const touch = e.touches[0];
+                startX = touch.clientX - translateX;
+                startY = touch.clientY - translateY;
+
+                } else if (e.touches.length === 2) {
+                // 双指缩放
+                isPinching = true;
+                isDragging = false;
+
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                initialDistance = getTouchDistance(touch1, touch2);
+                initialScale = scale;
+                }
+
+                e.preventDefault();
+            }, { passive: false });
+
+            mermaidElement.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isDragging && !isPinching) {
+                // 单指拖动
+                const touch = e.touches[0];
+                translateX = touch.clientX - startX;
+                translateY = touch.clientY - startY;
+                updateTransform();
+
+                } else if (e.touches.length === 2 && isPinching) {
+                // 双指缩放
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const currentDistance = getTouchDistance(touch1, touch2);
+
+                if (initialDistance > 0) {
+                    const newScale = Math.min(Math.max(
+                    initialScale * (currentDistance / initialDistance),
+                    0.3
+                    ), 4);
+                    scale = newScale;
+                    updateTransform();
+                }
+                }
+
+                e.preventDefault();
+            }, { passive: false });
+
+            mermaidElement.addEventListener('touchend', (e) => {
+                // 重置状态
+                if (e.touches.length === 0) {
+                isDragging = false;
+                isPinching = false;
+                initialDistance = 0;
+
+                // 延迟重置isTouch，避免鼠标事件立即触发
+                setTimeout(() => {
+                    isTouch = false;
+                }, 100);
+                } else if (e.touches.length === 1 && isPinching) {
+                // 从双指变为单指，切换为拖动模式
+                isPinching = false;
+                isDragging = true;
+
+                const touch = e.touches[0];
+                startX = touch.clientX - translateX;
+                startY = touch.clientY - translateY;
+                }
+
+                updateTransform();
+            });
+
+            mermaidElement.addEventListener('touchcancel', (e) => {
+                isDragging = false;
+                isPinching = false;
+                initialDistance = 0;
+
+                setTimeout(() => {
+                isTouch = false;
+                }, 100);
+
+                updateTransform();
+            });
+
+            // Enhanced wheel zoom with better center point handling
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = container.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                const newScale = Math.min(Math.max(scale * delta, 0.3), 4);
+
+                // Adjust translation to zoom towards center
+                if (newScale !== scale) {
+                const scaleDiff = newScale / scale;
+                translateX = translateX * scaleDiff;
+                translateY = translateY * scaleDiff;
+                scale = newScale;
+
+                if (scale <= 1) {
+                    translateX = 0;
+                    translateY = 0;
+                }
+
+                updateTransform();
+                }
+            });
+
+            // Initialize display
+            updateTransform();
+            });
+        }
+
+        // Initialize the controls
+        initializeMermaidControls();
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Highlight active section in TOC
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('.toc-fixed a');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('text-accent', 'border-accent');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('text-accent', 'border-accent');
+                }
+            });
+        });
+    </script>
+  
+
+</body></html>
